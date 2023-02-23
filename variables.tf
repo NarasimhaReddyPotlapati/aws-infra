@@ -5,7 +5,7 @@ variable "region" {
 
 variable "profile" {
   type    = string
-  default = "demo"
+  default = "dev"
 }
 
 variable "my_vpc" {
@@ -26,4 +26,8 @@ variable "public_cidr" {
 variable "private_cidr" {
     type = list(string)
     default = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
+}
+
+variable "aws-ami" {
+    type = string
 }
