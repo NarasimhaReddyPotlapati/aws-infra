@@ -5,7 +5,7 @@ variable "region" {
 
 variable "profile" {
   type    = string
-  default = "dev"
+  default = "demo"
 }
 
 variable "my_vpc" {
