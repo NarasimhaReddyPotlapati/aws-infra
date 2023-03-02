@@ -31,3 +31,13 @@ variable "private_cidr" {
 variable "aws-ami" {
     type = string
 }
+
+variable "db_port" {
+    type = string
+    default = "3306"
+}
+
+variable "environment" {
+    type = string
+    default = "demo"
+}
