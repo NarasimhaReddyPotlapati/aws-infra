@@ -263,3 +263,11 @@ resource "aws_iam_instance_profile" "profile" {
   name = "profile"
   role = aws_iam_role.ec2_csye6225_role.name
 }
+
+resource "aws_route53_record" "example" {
+  zone_id = "Z0151735I2QGMAPJV9OP"
+  name    = "demo.narasimha.me"
+  type    = "A"
+  ttl     = "30"
+  records = [aws_instance.my_ec2_instance.public_ip]
+}
