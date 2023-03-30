@@ -254,9 +254,27 @@ resource "aws_iam_role" "ec2_csye6225_role" {
   })
 }
 
+data "aws_iam_policy" "CloudWatchAgentServerPolicy" {
+  arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "EC2-CW" {
+  role       = aws_iam_role.ec2_csye6225_role.name
+  policy_arn = data.aws_iam_policy.CloudWatchAgentServerPolicy.arn
+}
+
 resource "aws_iam_role_policy_attachment" "webapp_s3_policy_attachment" {
   policy_arn = aws_iam_policy.webapp_s3_policy.arn
   role       = aws_iam_role.ec2_csye6225_role.name
+}
+
+resource "aws_cloudwatch_log_group" "csye" {
+  name = "csye"
+}
+
+resource "aws_cloudwatch_log_stream" "foo" {
+  name           = "webapp"
+  log_group_name = aws_cloudwatch_log_group.csye.name
 }
 
 resource "aws_iam_instance_profile" "profile" {
