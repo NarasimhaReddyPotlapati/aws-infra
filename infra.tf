@@ -167,6 +167,11 @@ resource "aws_db_subnet_group" "private_subnet" {
   name = "database"
 }
 
+resource "aws_kms_key" "b" {
+  description             = "RDS key 1"
+  deletion_window_in_days = 10
+}
+
 # create the rds instance
 resource "aws_db_instance" "db_instance" {
   engine                  = "mysql"
@@ -181,6 +186,8 @@ resource "aws_db_instance" "db_instance" {
   vpc_security_group_ids  = [aws_security_group.database_security_group.id]
   db_name                 = "csye6225"
   skip_final_snapshot     = "true"
+  storage_encrypted       = "true"
+  kms_key_id              = aws_kms_key.b.arn
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "s3" {
@@ -327,12 +334,12 @@ resource "aws_security_group" "load_balancer_security_group" {
   name = "load_balancer_security_group"
   description = "Security group for the load balancer"
   vpc_id = aws_vpc.my_first_vpc.id
-  ingress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # ingress {
+  #   from_port = 80
+  #   to_port = 80
+  #   protocol = "tcp"
+  #   cidr_blocks = ["0.0.0.0/0"]
+  # }
   
   ingress {
     from_port = 443
@@ -386,8 +393,10 @@ resource "aws_lb" "webapp_lb" {
 # Listener
 resource "aws_lb_listener" "listener" {
   load_balancer_arn = aws_lb.webapp_lb.arn
-  port = "80"
-  protocol = "HTTP"
+  port = "443"
+  protocol = "HTTPS"
+
+  certificate_arn = "arn:aws:acm:us-east-1:158520471333:certificate/dca3bd6c-5fbf-44cb-91b7-55fb58d18c12"
 
   default_action {
     target_group_arn = aws_lb_target_group.target_group.arn
@@ -411,6 +420,63 @@ locals {
  	EOF
 }
 
+resource "aws_kms_key" "a" {
+  description             = "EBS key 1"
+  deletion_window_in_days = 10
+}
+
+resource "aws_kms_key_policy" "example" {
+  key_id = aws_kms_key.a.id
+  policy = jsonencode({
+    Id = "key-consolepolicy-1"
+    Statement = [
+        {
+            Sid = "Enable IAM User Permissions",
+            Effect = "Allow",
+            Principal = {
+                AWS = "arn:aws:iam::158520471333:root"
+            },
+            Action = "kms:*",
+            Resource = "*"
+        },
+        {
+            Sid = "Allow use of the key",
+            Effect = "Allow",
+            Principal = {
+                AWS: "arn:aws:iam::158520471333:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+            },
+            Action = [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+            ],
+            Resource: "*"
+        },
+        {
+            Sid = "Allow attachment of persistent resources",
+            Effect = "Allow",
+            Principal = {
+                AWS: "arn:aws:iam::158520471333:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+            },
+            Action =  [
+                "kms:CreateGrant",
+                "kms:ListGrants",
+                "kms:RevokeGrant"
+            ],
+            Resource = "*",
+            Condition = {
+                Bool = {
+                    "kms:GrantIsForAWSResource": "true"
+                }
+            }
+        }
+    ]
+    Version = "2012-10-17"
+  })
+}
+
 # Create a launch template
 resource "aws_launch_template" "webapp_launch_template" {
   name = "webapp-launch-template"
@@ -427,6 +493,8 @@ resource "aws_launch_template" "webapp_launch_template" {
       volume_size = 50
       volume_type = "gp2"
       delete_on_termination = true
+      encrypted = "true"
+      kms_key_id = aws_kms_key.a.arn
     }
   }
   user_data = base64encode(local.user_data_ec2)
